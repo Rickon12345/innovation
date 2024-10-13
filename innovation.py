@@ -1,9 +1,11 @@
 import sys
 import estimateALAAMSA
+import os
+import pandas as pd 
 from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import (
-    QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget,
+    QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget,QMessageBox,
     QTextEdit, QFileDialog, QTableWidget, QTableWidgetItem, QCheckBox, 
     QHBoxLayout, QDialogButtonBox, QDialog, QLabel
 )
@@ -11,11 +13,12 @@ from changeStatisticsALAAM import *
 from changeStatisticsALAAMbipartite import *
 from changeStatisticsALAAMdirected import *
 from basicALAAMsampler import basicALAAMsampler
+from functools import partial
 
 class Ui_Form(QWidget):
     networkSignal = pyqtSignal(object)
     binarySignal = pyqtSignal(object)
-    continiousSignal = pyqtSignal(object)
+    continousSignal = pyqtSignal(object)
     categoricalSignal = pyqtSignal(object)
     dyadicSignal = pyqtSignal(object)
     # Dictionary for directed network functions and their names
@@ -54,6 +57,11 @@ class Ui_Form(QWidget):
         "TriangleT3": changeTriangleT3
     }
     parameters_list = []
+    binary_parameters_list = []
+    continous_parameters_list = []
+    categorical_parameters_list = []
+    dyadic_parameters_list = []
+
     def __init__(self):
         super(Ui_Form, self).__init__()
         self.setupUi(self)
@@ -167,15 +175,31 @@ class Ui_Form(QWidget):
         self.pushButton_9 = QtWidgets.QPushButton(parent=self.groupBox_3)
         self.pushButton_9.setGeometry(QtCore.QRect(450, 20, 121, 24))
         self.pushButton_9.setObjectName("pushButton_9")
+
+        ##select Binary parameter
+        self.pushButton_9.clicked.connect(self.selectBinaryParameter)
+
         self.pushButton_10 = QtWidgets.QPushButton(parent=self.groupBox_3)
         self.pushButton_10.setGeometry(QtCore.QRect(450, 50, 121, 24))
         self.pushButton_10.setObjectName("pushButton_10")
+
+        ##select Continous parameter
+        self.pushButton_10.clicked.connect(self.selectContinousParameter)
+
         self.pushButton_11 = QtWidgets.QPushButton(parent=self.groupBox_3)
         self.pushButton_11.setGeometry(QtCore.QRect(450, 80, 121, 24))
         self.pushButton_11.setObjectName("pushButton_11")
+
+        ##select categorical parameter
+        self.pushButton_11.clicked.connect(self.selectCategoricalParameter)
+
         self.pushButton_12 = QtWidgets.QPushButton(parent=self.groupBox_3)
         self.pushButton_12.setGeometry(QtCore.QRect(450, 110, 121, 24))
         self.pushButton_12.setObjectName("pushButton_12")
+
+        ##select dyadic parameter
+        self.pushButton_12.clicked.connect(self.selectDyadicParameter)
+        
         self.groupBox_4 = QtWidgets.QGroupBox(parent=Form)
         self.groupBox_4.setGeometry(QtCore.QRect(450, 10, 161, 161))
         self.groupBox_4.setObjectName("groupBox_4")
@@ -212,7 +236,7 @@ class Ui_Form(QWidget):
 
         self.progressBar = QtWidgets.QProgressBar(parent=Form)
         self.progressBar.setGeometry(QtCore.QRect(20, 340, 118, 23))
-        self.progressBar.setProperty("value", 24)
+        self.progressBar.setProperty("value", 0)
         self.progressBar.setObjectName("progressBar")
 
         self.retranslateUi(Form)
@@ -237,7 +261,7 @@ class Ui_Form(QWidget):
         self.label_3.setText(_translate("Form", "Binary Atrribute file: "))
         self.pushButton_4.setText(_translate("Form", "Browse.."))
         self.pushButton_5.setText(_translate("Form", "Browse.."))
-        self.label_4.setText(_translate("Form", "Continious Atrribute file: "))
+        self.label_4.setText(_translate("Form", "Continous Atrribute file: "))
         self.pushButton_6.setText(_translate("Form", "Browse.."))
         self.label_5.setText(_translate("Form", "Categorical Atrribute file: "))
         self.pushButton_7.setText(_translate("Form", "Browse.."))
@@ -264,18 +288,147 @@ class Ui_Form(QWidget):
     def selectBinaryFile(self):
         binaryFile = QFileDialog.getOpenFileName(self, 'Open file','','txt files (*.txt)')
         self.lineEdit_3.setText(binaryFile[0])
+
+    def selectBinaryParameter(self):
+        file_path = self.lineEdit_3.text()  # Get the file path from the lineEdit
+
+        if not os.path.exists(file_path):
+            # Show an error message if the file does not exist
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Critical)
+            msg.setText("Error: The file path is incorrect.")
+            msg.setInformativeText(f"The file '{file_path}' does not exist. Please check the path and try again.")
+            msg.setWindowTitle("File Error")
+            msg.exec_()
+            return
+
+        try:
+            # Load the file with correct delimiter (adjust if it's not tab-separated)
+            df = pd.read_csv(file_path, delimiter='\s+')  # Use '\s+' if space-separated
+            # Extract the headers from the DataFrame
+            headers = df.columns.tolist()  # Get list of headers
+            print("Headers:", headers)  # Debugging print to see the headers
+            self.binaryWindow = binaryWindow()
+            self.binarySignal.connect(self.binaryWindow.createCheckboxes)
+
+            self.binarySignal.emit(headers)
+            self.binaryWindow.binarySignal.connect(self.handleBinaryParameters)
+            self.binaryWindow.show()
+        except Exception as e:
+            QMessageBox.warning(self, "File Error", f"An error occurred while reading the file: {str(e)}")
+      
+    def handleBinaryParameters(self, selected):
+        self.binary_parameters_list = selected
+        print("Selected Binary parameters:", selected)
     
     def selectContinousFile(self):
         continousFile = QFileDialog.getOpenFileName(self, 'Open file','','txt files (*.txt)')
         self.lineEdit_4.setText(continousFile[0])
 
+    def selectContinousParameter(self):
+        file_path = self.lineEdit_4.text()  # Get the file path from the lineEdit
+
+        if not os.path.exists(file_path):
+            # Show an error message if the file does not exist
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Critical)
+            msg.setText("Error: The file path is incorrect.")
+            msg.setInformativeText(f"The file '{file_path}' does not exist. Please check the path and try again.")
+            msg.setWindowTitle("File Error")
+            msg.exec_()
+            return
+
+        try:
+            # Load the file with correct delimiter (adjust if it's not tab-separated)
+            df = pd.read_csv(file_path, delimiter='\s+')  # Use '\s+' if space-separated
+            # Extract the headers from the DataFrame
+            headers = df.columns.tolist()  # Get list of headers
+            print("Headers:", headers)  # Debugging print to see the headers
+            self.continousWindow = continousWindow()
+            self.continousSignal.connect(self.continousWindow.createCheckboxes)
+
+            self.continousSignal.emit(headers)
+            self.continousWindow.continousSignal.connect(self.handleContinousParameters)
+            self.continousWindow.show()
+        except Exception as e:
+            QMessageBox.warning(self, "File Error", f"An error occurred while reading the file: {str(e)}")
+      
+    def handleContinousParameters(self, selected):
+        self.continous_parameters_list = selected
+        print("Selected continous parameters:", selected)
+
     def selectCategoricalFile(self):
         categoricalFile = QFileDialog.getOpenFileName(self, 'Open file','','txt files (*.txt)')
         self.lineEdit_5.setText(categoricalFile[0])    
 
+    def selectCategoricalParameter(self):
+        file_path = self.lineEdit_5.text()  # Get the file path from the lineEdit
+
+        if not os.path.exists(file_path):
+            # Show an error message if the file does not exist
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Critical)
+            msg.setText("Error: The file path is incorrect.")
+            msg.setInformativeText(f"The file '{file_path}' does not exist. Please check the path and try again.")
+            msg.setWindowTitle("File Error")
+            msg.exec_()
+            return
+
+        try:
+            # Load the file with correct delimiter (adjust if it's not tab-separated)
+            df = pd.read_csv(file_path, delimiter='\s+')  # Use '\s+' if space-separated
+            # Extract the headers from the DataFrame
+            headers = df.columns.tolist()  # Get list of headers
+            print("Headers:", headers)  # Debugging print to see the headers
+            self.categoricalWindow = categoricalWindow()
+            self.categoricalSignal.connect(self.categoricalWindow.createCheckboxes)
+
+            self.categoricalSignal.emit(headers)
+            self.categoricalWindow.categoricalSignal.connect(self.handleCategoricalParameters)
+            self.categoricalWindow.show()
+        except Exception as e:
+            QMessageBox.warning(self, "File Error", f"An error occurred while reading the file: {str(e)}")
+      
+    def handleCategoricalParameters(self, selected):
+        self.categorical_parameters_list = selected
+        print("Selected Categorical parameters:", selected)
+
     def selectDyadicFile(self):
         dyadicFile = QFileDialog.getOpenFileName(self, 'Open file','','txt files (*.txt)')
         self.lineEdit_6.setText(dyadicFile[0])
+
+    def selectDyadicParameter(self):
+        file_path = self.lineEdit_6.text()  # Get the file path from the lineEdit
+
+        if not os.path.exists(file_path):
+            # Show an error message if the file does not exist
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Critical)
+            msg.setText("Error: The file path is incorrect.")
+            msg.setInformativeText(f"The file '{file_path}' does not exist. Please check the path and try again.")
+            msg.setWindowTitle("File Error")
+            msg.exec_()
+            return
+
+        try:
+            # Load the file with correct delimiter (adjust if it's not tab-separated)
+            df = pd.read_csv(file_path, delimiter='\s+')  # Use '\s+' if space-separated
+            # Extract the headers from the DataFrame
+            headers = df.columns.tolist()  # Get list of headers
+            print("Headers:", headers)  # Debugging print to see the headers
+            self.dyadicWindow = dyadicWindow()
+            self.dyadicSignal.connect(self.dyadicWindow.createCheckboxes)
+
+            self.dyadicSignal.emit(headers)
+            self.dyadicWindow.dyadicSignal.connect(self.handleDyadicParameters)
+            self.dyadicWindow.show()
+        except Exception as e:
+            QMessageBox.warning(self, "File Error", f"An error occurred while reading the file: {str(e)}")
+      
+    def handleDyadicParameters(self, selected):
+        self.dyadic_parameters_list = selected
+        print("Selected Dyadic parameters:", selected)
+
 
     def openNetworkWindow(self):
         self.networkWindow = networkWindow()
@@ -306,6 +459,7 @@ class Ui_Form(QWidget):
         burnIn = self.spinBox.value()
         iterations = self.spinBox_2.value()
         samples = self.spinBox_3.value()
+        self.progressBar.setRange(0, 0)
 
         # Check if the filepaths are empty strings, and assign None if they are
         binaryFilepath = None if binaryFilepath == "" else binaryFilepath
@@ -314,7 +468,6 @@ class Ui_Form(QWidget):
         dyadicFilepath = None if dyadicFilepath == "" else dyadicFilepath
         # Check whether the network is directed or undirected (for example, using a checkbox)
         is_directed = self.radioButton.isChecked()
-
 
         # Prepare lists for functions and corresponding names
         selected_funcs = []
@@ -331,6 +484,41 @@ class Ui_Form(QWidget):
             if param in func_dict:
                 selected_funcs.append(func_dict[param])  # Add the corresponding function
                 selected_names.append(param)  # Add the corresponding name
+        
+        #for param in self.binary_parameters_list:
+        if len(self.binary_parameters_list) != 0:
+            for param in self.binary_parameters_list:
+                # Remove the "_oOA" suffix from the parameter name
+                clean_param = param.replace("_oOA", "")
+                selected_funcs.append(partial(changeoOb, clean_param))  # Add the corresponding function
+                selected_names.append(param)  # Add the corresponding name
+
+        #for param in self.continous_parameters_list:
+        if len(self.continous_parameters_list) != 0:
+            for param in self.continous_parameters_list:
+                # Remove the "_oOA" suffix from the parameter name
+                clean_param = param.replace("_oOA", "")
+                selected_funcs.append(partial(changeoOc, clean_param))  # Add the corresponding function
+                selected_names.append(param)  # Add the corresponding name
+
+        #for param in self.categorical_parameters_list:
+        if len(self.categorical_parameters_list) != 0:
+            for param in self.categorical_parameters_list:
+                # Remove the "_oOA" suffix from the parameter name
+                clean_param = param.replace("_oOA", "")
+                selected_funcs.append(partial(changeoO_OsameContagion, clean_param))  # Add the corresponding function
+                selected_names.append(param)  # Add the corresponding name
+
+        #for param in self.dyadic_parameters_list:
+        if len(self.dyadic_parameters_list) != 0:
+            for param in self.dyadic_parameters_list:
+                # Remove the "_oOA" suffix from the parameter name
+                clean_param = param.replace("_oOA", "")
+                selected_funcs.append(partial(changeoOb, clean_param))  # Add the corresponding function
+                selected_names.append(param)  # Add the corresponding name
+        
+        print ("selected_funcs: "+ str(selected_funcs))
+        print ("selected_names: "+ str(selected_names))
 
         results = estimateALAAMSA.run_on_network_attr(
             networkFilepath,  # Network data file path
@@ -362,11 +550,12 @@ class networkWindow(QWidget):
         super().__init__()
 
         self.setWindowTitle("Select Parameters")
+        self.setFixedWidth(300)  # Set a wider width
         self.layout = QVBoxLayout(self)
 
         # Set some padding around the window
         self.layout.setContentsMargins(10, 10, 10, 10)
-        self.layout.setSpacing(10)
+        self.layout.setSpacing(5)
 
         # OK button to confirm selection
         self.ok_button = QPushButton("OK", self)
@@ -418,6 +607,238 @@ class networkWindow(QWidget):
         self.close()
 
 ################end sub window#######################################
+################binary window########################################
+class binaryWindow(QWidget):
+    # Signal to send selected checkboxes back to the main window
+    binarySignal = pyqtSignal(list)
+
+    def __init__(self):
+        super().__init__()
+
+        self.setWindowTitle("Select Binary Parameters")
+        self.setFixedWidth(300)  # Set a wider width
+        self.layout = QVBoxLayout(self)
+
+        # Set padding and spacing around the window
+        self.layout.setContentsMargins(10, 10, 10, 10)
+        self.layout.setSpacing(10)
+
+        # OK button to confirm selection
+        self.ok_button = QPushButton("OK", self)
+        self.ok_button.clicked.connect(self.sendSelection)
+
+        # Add the OK button to the layout
+        self.layout.addStretch()
+        self.layout.addWidget(self.ok_button, alignment=QtCore.Qt.AlignmentFlag.AlignCenter)
+
+        self.setLayout(self.layout)
+        self.checkboxes = []  # To store checkboxes
+
+        # Optionally set a maximum height
+        self.setMaximumHeight(400)
+
+    def createCheckboxes(self, headers):
+        # Clear any existing checkboxes by removing them from the layout
+        for checkbox in self.checkboxes:
+            self.layout.removeWidget(checkbox)  # Remove from layout
+            checkbox.deleteLater()  # Delete the checkbox
+        self.checkboxes.clear()
+
+        # Create checkboxes based on headers passed in
+        for header in headers:
+            print (header+"##")
+            header = header.strip()  # Remove extra spaces, line breaks, etc.
+            checkbox_label = f"{header}_oOA"  # Format the label correctly
+            checkbox = QCheckBox(checkbox_label, self)
+            checkbox.setStyleSheet("margin: 5px;")  # Add some margin to checkboxes
+            self.layout.insertWidget(self.layout.count() - 1, checkbox)  # Insert before the OK button
+            self.checkboxes.append(checkbox)
+
+    def sendSelection(self):
+        # Get selected checkboxes
+        selected = [cb.text() for cb in self.checkboxes if cb.isChecked()]
+
+        # Emit the selected checkboxes back to the main window
+        self.binarySignal.emit(selected)
+
+        # Close the window after selection
+        self.close()
+
+################end binary window###################################
+################continous window########################################
+class continousWindow(QWidget):
+    # Signal to send selected checkboxes back to the main window
+    continousSignal = pyqtSignal(list)
+
+    def __init__(self):
+        super().__init__()
+
+        self.setWindowTitle("Select Continous Parameters")
+        self.setFixedWidth(300)  # Set a wider width
+        self.layout = QVBoxLayout(self)
+
+        # Set padding and spacing around the window
+        self.layout.setContentsMargins(10, 10, 10, 10)
+        self.layout.setSpacing(10)
+
+        # OK button to confirm selection
+        self.ok_button = QPushButton("OK", self)
+        self.ok_button.clicked.connect(self.sendSelection)
+
+        # Add the OK button to the layout
+        self.layout.addStretch()
+        self.layout.addWidget(self.ok_button, alignment=QtCore.Qt.AlignmentFlag.AlignCenter)
+
+        self.setLayout(self.layout)
+        self.checkboxes = []  # To store checkboxes
+
+        # Optionally set a maximum height
+        self.setMaximumHeight(400)
+
+    def createCheckboxes(self, headers):
+        # Clear any existing checkboxes by removing them from the layout
+        for checkbox in self.checkboxes:
+            self.layout.removeWidget(checkbox)  # Remove from layout
+            checkbox.deleteLater()  # Delete the checkbox
+        self.checkboxes.clear()
+
+        # Create checkboxes based on headers passed in
+        for header in headers:
+            print (header+"##")
+            header = header.strip()  # Remove extra spaces, line breaks, etc.
+            checkbox_label = f"{header}_oOA"  # Format the label correctly
+            checkbox = QCheckBox(checkbox_label, self)
+            checkbox.setStyleSheet("margin: 5px;")  # Add some margin to checkboxes
+            self.layout.insertWidget(self.layout.count() - 1, checkbox)  # Insert before the OK button
+            self.checkboxes.append(checkbox)
+
+    def sendSelection(self):
+        # Get selected checkboxes
+        selected = [cb.text() for cb in self.checkboxes if cb.isChecked()]
+
+        # Emit the selected checkboxes back to the main window
+        self.continousSignal.emit(selected)
+
+        # Close the window after selection
+        self.close()
+
+################end continous window###################################
+################categorical window########################################
+class categoricalWindow(QWidget):
+    # Signal to send selected checkboxes back to the main window
+    categoricalSignal = pyqtSignal(list)
+
+    def __init__(self):
+        super().__init__()
+
+        self.setWindowTitle("Select Categorical Parameters")
+        self.setFixedWidth(300)  # Set a wider width
+        self.layout = QVBoxLayout(self)
+
+        # Set padding and spacing around the window
+        self.layout.setContentsMargins(10, 10, 10, 10)
+        self.layout.setSpacing(10)
+
+        # OK button to confirm selection
+        self.ok_button = QPushButton("OK", self)
+        self.ok_button.clicked.connect(self.sendSelection)
+
+        # Add the OK button to the layout
+        self.layout.addStretch()
+        self.layout.addWidget(self.ok_button, alignment=QtCore.Qt.AlignmentFlag.AlignCenter)
+
+        self.setLayout(self.layout)
+        self.checkboxes = []  # To store checkboxes
+
+        # Optionally set a maximum height
+        self.setMaximumHeight(400)
+
+    def createCheckboxes(self, headers):
+        # Clear any existing checkboxes by removing them from the layout
+        for checkbox in self.checkboxes:
+            self.layout.removeWidget(checkbox)  # Remove from layout
+            checkbox.deleteLater()  # Delete the checkbox
+        self.checkboxes.clear()
+
+        # Create checkboxes based on headers passed in
+        for header in headers:
+            print (header+"##")
+            header = header.strip()  # Remove extra spaces, line breaks, etc.
+            checkbox_label = f"{header}_oOA"  # Format the label correctly
+            checkbox = QCheckBox(checkbox_label, self)
+            checkbox.setStyleSheet("margin: 5px;")  # Add some margin to checkboxes
+            self.layout.insertWidget(self.layout.count() - 1, checkbox)  # Insert before the OK button
+            self.checkboxes.append(checkbox)
+
+    def sendSelection(self):
+        # Get selected checkboxes
+        selected = [cb.text() for cb in self.checkboxes if cb.isChecked()]
+
+        # Emit the selected checkboxes back to the main window
+        self.categoricalSignal.emit(selected)
+
+        # Close the window after selection
+        self.close()
+
+################end categorical window###################################
+################dyadic window########################################
+class dyadicWindow(QWidget):
+    # Signal to send selected checkboxes back to the main window
+    dyadicSignal = pyqtSignal(list)
+
+    def __init__(self):
+        super().__init__()
+
+        self.setWindowTitle("Select Dyadic Parameters")
+        self.setFixedWidth(300)  # Set a wider width
+        self.layout = QVBoxLayout(self)
+
+        # Set padding and spacing around the window
+        self.layout.setContentsMargins(10, 10, 10, 10)
+        self.layout.setSpacing(10)
+
+        # OK button to confirm selection
+        self.ok_button = QPushButton("OK", self)
+        self.ok_button.clicked.connect(self.sendSelection)
+
+        # Add the OK button to the layout
+        self.layout.addStretch()
+        self.layout.addWidget(self.ok_button, alignment=QtCore.Qt.AlignmentFlag.AlignCenter)
+
+        self.setLayout(self.layout)
+        self.checkboxes = []  # To store checkboxes
+
+        # Optionally set a maximum height
+        self.setMaximumHeight(400)
+
+    def createCheckboxes(self, headers):
+        # Clear any existing checkboxes by removing them from the layout
+        for checkbox in self.checkboxes:
+            self.layout.removeWidget(checkbox)  # Remove from layout
+            checkbox.deleteLater()  # Delete the checkbox
+        self.checkboxes.clear()
+
+        # Create checkboxes based on headers passed in
+        for header in headers:
+            print (header+"##")
+            header = header.strip()  # Remove extra spaces, line breaks, etc.
+            checkbox_label = f"{header}_oOA"  # Format the label correctly
+            checkbox = QCheckBox(checkbox_label, self)
+            checkbox.setStyleSheet("margin: 5px;")  # Add some margin to checkboxes
+            self.layout.insertWidget(self.layout.count() - 1, checkbox)  # Insert before the OK button
+            self.checkboxes.append(checkbox)
+
+    def sendSelection(self):
+        # Get selected checkboxes
+        selected = [cb.text() for cb in self.checkboxes if cb.isChecked()]
+
+        # Emit the selected checkboxes back to the main window
+        self.dyadicSignal.emit(selected)
+
+        # Close the window after selection
+        self.close()
+
+################end dyadic window###################################
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
